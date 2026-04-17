@@ -37,7 +37,8 @@ CHATS = [
     "@rubl_savdo_uzfor",
     "@uzforum_guruh",
     "@UsaForumGarant",
-    "@nft_forumi",z
+    "@nft_forumi",
+    "@sales_chat",
     "@garantliy",
     "@global_forums",
     "@pikrchichat",
