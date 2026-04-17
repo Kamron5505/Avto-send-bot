@@ -1,0 +1,13 @@
+[Unit]
+Description=Telegram Sender Bot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/sender
+ExecStart=/opt/sender/venv/bin/python sender.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
