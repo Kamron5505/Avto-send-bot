@@ -128,6 +128,11 @@ async def send_messages(client: TelegramClient):
     failed = 0
 
     for chat in CHATS:
+        # Переподключаемся если соединение разорвано
+        if not client.is_connected():
+            log.warning("Соединение разорвано, переподключаемся...")
+            await client.connect()
+
         try:
             peer = await client.get_input_entity(chat)
             await client(functions.messages.SendMessageRequest(
