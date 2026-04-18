@@ -2,7 +2,6 @@ import asyncio
 import random
 import re
 import logging
-from datetime import datetime
 from telethon import TelegramClient
 from telethon.errors import FloodWaitError, UserBannedInChannelError, ChatWriteForbiddenError
 from telethon.tl import functions, types
@@ -47,27 +46,27 @@ CHATS = [
     "@nft_savdotez",
 ]
 
-INTERVAL = 480        # 8 минут между рассылками (безопаснее чем 7)
-DELAY_MIN = 25        # увеличены задержки между чатами
+INTERVAL = 480
+DELAY_MIN = 25
 DELAY_MAX = 45
 
-# Сообщение с Premium emoji и bold тегами
 RAW_MESSAGE = """\
 <emoji id=5819154994967874788>🧑‍💻</emoji> Assalomu Aleykum!
 
 <emoji id=5235755963515959900>🔥</emoji> <b>STARS NARXLARI HAQIDA MA'LUMOT</b> <emoji id=5244628717409439861>⚡️</emoji>
 
-<emoji id=4920593664222168414>🌟</emoji> Telegram yulduzlari narxlari <emoji id=5219774519056559758>⚡️</emoji>
+<emoji id=4920593664222168414>🌟</emoji> Telegram yulduzlari narxlari
 
-<emoji id=5276410865514471688>⭐️</emoji> 50 ta yulduz — 10,000 so'm
-<emoji id=5276410865514471688>⭐️</emoji> 100 ta yulduz — 20,000 so'm
-<emoji id=5276410865514471688>⭐️</emoji> 150 ta yulduz — 30,000 so'm
-<emoji id=5276410865514471688>⭐️</emoji> 200 ta yulduz — 40,000 so'm
+<emoji id=5276410865514471688>⭐️</emoji> 50 ta — 10,000 so'm
+<emoji id=5276410865514471688>⭐️</emoji> 100 ta — 20,000 so'm
+<emoji id=5276410865514471688>⭐️</emoji> 150 ta — 30,000 so'm
+<emoji id=5276410865514471688>⭐️</emoji> 200 ta — 40,000 so'm
 
-<emoji id=5469718869536940860>👆</emoji> Eng qulay narxlar, 100% ishonchli <emoji id=5458883109430771204>✔️</emoji>
-<emoji id=5193085063998224234>🎁</emoji> Sovg'alar bo'limida ham juda yaxshi takliflar bor
+<emoji id=5469718869536940860>👆</emoji> Eng qulay narxlar
+<emoji id=5193085063998224234>🎁</emoji> Sovg'alar ham bor
 
-<emoji id=6269085886177087845>➡️</emoji> <b>Buyurtma berish:</b> @starpayuz_bot"""
+➡️ @starpayuz_bot
+"""
 
 # ─── Логирование ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -81,27 +80,24 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
+# ─── Парсер эмодзи ───────────────────────────────────────────────────────────
 def parse_message(raw: str):
-    """
-    Парсит теги <emoji id=...>текст</emoji> и <b>текст</b>
-    Возвращает (plain_text, [entities])
-    """
     entities = []
     text = ""
-    # Токенизируем по тегам
-    token_re = re.compile(
-        r'<emoji id=(\d+)>(.*?)</emoji>|<b>(.*?)</b>',
-        re.DOTALL
-    )
+
+    token_re = re.compile(r'<emoji id=(\d+)>(.*?)</emoji>|<b>(.*?)</b>', re.DOTALL)
     last = 0
+
     for m in token_re.finditer(raw):
-        # Добавляем текст до тега
         text += raw[last:m.start()]
-        if m.group(1):  # <emoji id=...>
+
+        if m.group(1):
             emoji_id = int(m.group(1))
             inner = m.group(2)
+
             offset = len(text.encode("utf-16-le")) // 2
             length = len(inner.encode("utf-16-le")) // 2
+
             entities.append(
                 types.MessageEntityCustomEmoji(
                     offset=offset,
@@ -110,78 +106,80 @@ def parse_message(raw: str):
                 )
             )
             text += inner
-        elif m.group(3) is not None:  # <b>
+
+        elif m.group(3):
             inner = m.group(3)
+
             offset = len(text.encode("utf-16-le")) // 2
             length = len(inner.encode("utf-16-le")) // 2
-            entities.append(
-                types.MessageEntityBold(offset=offset, length=length)
-            )
+
+            entities.append(types.MessageEntityBold(offset=offset, length=length))
             text += inner
+
         last = m.end()
+
     text += raw[last:]
     return text, entities
 
 
-# ─── Отправка сообщений ───────────────────────────────────────────────────────
-async def send_messages(client: TelegramClient):
+# ─── Отправка ────────────────────────────────────────────────────────────────
+async def send_messages(client):
     log.info("=== Начало рассылки ===")
-    plain_text, entities = parse_message(RAW_MESSAGE)
-    success = 0
-    failed = 0
+
+    text, entities = parse_message(RAW_MESSAGE)
 
     for chat in CHATS:
-        # Переподключаемся если соединение разорвано
-        if not client.is_connected():
-            log.warning("Соединение разорвано, переподключаемся...")
-            await client.connect()
-
         try:
             peer = await client.get_input_entity(chat)
+
             await client(functions.messages.SendMessageRequest(
                 peer=peer,
-                message=plain_text,
+                message=text,
                 entities=entities,
                 no_webpage=True,
             ))
-            log.info(f"[OK] Отправлено в {chat}")
-            success += 1
+
+            log.info(f"[OK] {chat}")
+
         except FloodWaitError as e:
-            log.warning(f"[FloodWait] {chat} — ждём {e.seconds} сек.")
+            log.warning(f"[FloodWait {e.seconds}s] {chat}")
             await asyncio.sleep(e.seconds)
-        except (UserBannedInChannelError, ChatWriteForbiddenError) as e:
-            log.error(f"[Запрещено] {chat} — {e}")
-            failed += 1
+
+        except (UserBannedInChannelError, ChatWriteForbiddenError):
+            log.error(f"[NO ACCESS] {chat}")
+
         except Exception as e:
-            log.error(f"[Ошибка] {chat} — {e}")
-            failed += 1
+            log.error(f"[ERROR] {chat} — {e}")
 
-        if chat != CHATS[-1]:
-            delay = random.randint(DELAY_MIN, DELAY_MAX)
-            log.info(f"Ждём {delay} сек. перед следующим чатом...")
-            await asyncio.sleep(delay)
+        delay = random.randint(DELAY_MIN, DELAY_MAX)
+        await asyncio.sleep(delay)
 
-    log.info(f"=== Рассылка завершена: {success} успешно, {failed} ошибок ===")
+    log.info("=== Рассылка завершена ===")
 
 
-# ─── Основной цикл ────────────────────────────────────────────────────────────
+# ─── MAIN ────────────────────────────────────────────────────────────────────
 async def main_loop():
     client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
-    await client.start()
-    log.info("Клиент запущен. Авторизация прошла успешно.")
+
+    await client.connect()
+
+    # ❗ ВАЖНО: без этого Railway будет падать
+    if not await client.is_user_authorized():
+        raise Exception("❌ Сессия не найдена! Создайте её локально и загрузите.")
+
+    log.info("✅ Клиент подключен")
 
     try:
         while True:
             await send_messages(client)
-            log.info(f"Следующая рассылка через {INTERVAL // 60} мин.")
+            log.info(f"⏳ Ждём {INTERVAL // 60} минут...")
             await asyncio.sleep(INTERVAL)
-    except KeyboardInterrupt:
-        log.info("Остановлено пользователем.")
+
     finally:
         await client.disconnect()
-        log.info("Клиент отключён.")
+        log.info("❌ Отключено")
 
 
-# ─── Точка входа ──────────────────────────────────────────────────────────────
+# ─── START ───────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     asyncio.run(main_loop())
