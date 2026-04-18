@@ -1,13 +1,15 @@
 import asyncio
 from telethon import TelegramClient
 
-API_ID = 30654977
-API_HASH = "921be05f47930bd6e60860faa4c6b0d5"
+api_id = 30654977
+api_hash = "921be05f47930bd6e60860faa4c6b0d5"
 
 async def main():
-    client = TelegramClient('railway_session', API_ID, API_HASH)
-    await client.start()
-    print('Сессия создана: railway_session.session')
+    client = TelegramClient("sender_session", api_id, api_hash)
+    
+    await client.start()  # тут попросит номер и код
+    
+    print("✅ Session создана!")
     await client.disconnect()
 
 asyncio.run(main())
