@@ -44,6 +44,7 @@ CHATS = [
     "@uzfor_sovdo",
     "@uzforum_garandi",
     "@nft_savdotez",
+    "@KaFil_Forum",
 ]
 
 INTERVAL = 480
