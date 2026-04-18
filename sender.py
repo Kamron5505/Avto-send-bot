@@ -43,6 +43,8 @@ CHATS = [
     "@global_forums",
     "@pikrchichat",
     "@uzfor_sovdo",
+    "@uzforum_garandi",
+    "@nft_savdotez",
 ]
 
 INTERVAL = 480        # 8 минут между рассылками (безопаснее чем 7)
